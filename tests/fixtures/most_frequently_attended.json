@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "patients": [
+    {
+      "patientId": "P-000001",
+      "fullName": "Ada Okafor",
+      "age": 34,
+      "category": "General",
+      "phoneNumber": "08011112222",
+      "email": "ada.okafor@example.test"
+    },
+    {
+      "patientId": "P-000002",
+      "fullName": "Emeka Obi",
+      "age": 46,
+      "category": "Emergency",
+      "phoneNumber": "08022223333",
+      "email": "emeka.obi@example.test"
+    },
+    {
+      "patientId": "P-000003",
+      "fullName": "Zainab Musa",
+      "age": 29,
+      "category": "FollowUp",
+      "phoneNumber": "08033334444",
+      "email": "zainab.musa@example.test",
+      "followUpReason": "Post-treatment review"
+    }
+  ],
+  "appointments": [
+    {
+      "appointmentId": "A-000001",
+      "patientId": "P-000001",
+      "scheduledAt": "2024-02-12T09:00:00.000Z",
+      "status": "Completed",
+      "notes": "Initial consultation"
+    },
+    {
+      "appointmentId": "A-000002",
+      "patientId": "P-000001",
+      "scheduledAt": "2024-04-08T10:30:00.000Z",
+      "status": "Completed",
+      "notes": "Follow-up consultation"
+    },
+    {
+      "appointmentId": "A-000003",
+      "patientId": "P-000002",
+      "scheduledAt": "2024-03-19T11:15:00.000Z",
+      "status": "Completed",
+      "notes": "Emergency assessment"
+    }
+  ],
+  "waitingQueue": [
+    "P-000002",
+    "P-000003"
+  ]
+}

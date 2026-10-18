@@ -1,0 +1,155 @@
+@startuml
+title SCAPMS — Core Class Diagram
+
+left to right direction
+skinparam pageSize A4
+skinparam pageOrientation landscape
+skinparam dpi 180
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 26
+skinparam ranksep 30
+skinparam defaultFontName "Helvetica Neue"
+skinparam defaultFontSize 13
+skinparam classFontSize 13
+skinparam packageFontSize 15
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #496579
+  ArrowColor #496579
+  FontColor #203448
+  HeaderBackgroundColor #EAF1F6
+}
+skinparam package {
+  BorderColor #A8BAC8
+  FontColor #17324D
+}
+
+package "Patient Domain" {
+  interface Appointable {
+    +scheduleAppointment(appointment, now): void
+    +cancelAppointment(appointment): void
+  }
+
+  abstract class PatientRecord {
+    -patientId: QString
+    -fullName: QString
+    -age: int
+    -contactInformation: ContactInformation
+    +patientId(): const QString&
+    +fullName(): const QString&
+    +age(): int
+    +category(): PatientCategory {abstract}
+    +priorityLabel(): QString {abstract}
+    +withUpdatedDetails(...): shared_ptr<const PatientRecord> {abstract}
+  }
+
+  class GeneralPatient {
+    +category(): PatientCategory
+    +priorityLabel(): QString
+  }
+
+  class EmergencyPatient {
+    +category(): PatientCategory
+    +priorityLabel(): QString
+  }
+
+  class FollowUpPatient {
+    -followUpReason: QString
+    +category(): PatientCategory
+    +priorityLabel(): QString
+    +followUpReason(): const QString&
+  }
+
+  class ContactInformation <<struct>> {
+    +phoneNumber: QString
+    +email: QString
+  }
+}
+
+package "Data and Appointments" {
+  class ClinicDatabase {
+    -patients: vector<PatientPointer>
+    -appointments: vector<Appointment>
+    -waitingQueue: queue<QString>
+    -undoSnapshots: stack<Snapshot>
+    -recentPatients: array<CacheEntry, 10>
+    +addPatient(patient): void
+    +removePatientAndRelatedState(patientId): void
+    +addAppointment(appointment): void
+    +enqueuePatient(patientId): void
+    +callNextPatient(): optional<QString>
+    +undoLastOperation(): bool
+  }
+
+  class Appointment {
+    -appointmentId: QString
+    -patientId: QString
+    -scheduledAt: QDateTime
+    -status: AppointmentStatus
+    -notes: QString
+    {static} +schedule(...): Appointment
+    {static} +restore(...): Appointment
+    +cancel(): void
+    +markCompleted(now): void
+  }
+}
+
+package "Controllers" {
+  class ClinicManager {
+    +registerPatient(patient): void
+    +editPatient(patientId, ...): void
+    +deletePatient(patientId): void
+    +getPatient(patientId): PatientPointer
+    +enqueuePatient(patientId): void
+    +callNextPatient(): optional<QString>
+    +undoLastAdministrativeOperation(): bool
+  }
+
+  class AppointmentController {
+    +scheduleAppointment(...): Appointment
+    +cancelAppointment(appointmentId): void
+    +completeAppointment(appointmentId, now): void
+    +getAppointment(appointmentId): Appointment
+  }
+}
+
+package "GUI" {
+  class MainWindow {
+    +registerPatient(...): bool
+    +scheduleAppointment(...): bool
+    +enqueuePatient(patientId): bool
+    +undoLastOperation(): bool
+    +saveToFile(path): PersistenceResult
+    +loadFromFile(path): PersistenceResult
+  }
+}
+
+' Interface implementation and patient specialization
+Appointable <|.. PatientRecord
+PatientRecord <|-- GeneralPatient
+PatientRecord <|-- EmergencyPatient
+PatientRecord <|-- FollowUpPatient
+
+' Value composition, shared patient records, and ID-based appointment link
+PatientRecord *-- ContactInformation
+ClinicDatabase o-- "0..*" PatientRecord
+ClinicDatabase *-- "0..*" Appointment
+Appointment "0..*" --> "1" PatientRecord : patientId
+
+' Application layering and controller dependencies
+MainWindow *-- ClinicDatabase
+MainWindow *-- ClinicManager
+MainWindow *-- AppointmentController
+ClinicManager --> ClinicDatabase
+AppointmentController --> ClinicDatabase
+AppointmentController ..> Appointment
+
+' Align the sections with the application flow for a landscape page.
+MainWindow -[hidden]right- ClinicManager
+ClinicManager -[hidden]right- ClinicDatabase
+ClinicDatabase -[hidden]right- PatientRecord
+
+@enduml

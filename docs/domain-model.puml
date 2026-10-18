@@ -1,0 +1,279 @@
+@startuml
+title SCAPMS — Domain and Application Class Diagram
+
+left to right direction
+skinparam pageSize A3
+skinparam pageOrientation landscape
+skinparam dpi 180
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 35
+skinparam ranksep 38
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #496579
+  ArrowColor #496579
+  FontColor #203448
+  HeaderBackgroundColor #EAF1F6
+}
+skinparam package {
+  BorderColor #A8BAC8
+  FontColor #17324D
+}
+
+package "Models" {
+  interface Appointable {
+    +scheduleAppointment(appointment: Appointment, now: QDateTime): void
+    +cancelAppointment(appointment: Appointment): void
+  }
+
+  abstract class PatientRecord {
+    -m_patientId: QString
+    -m_fullName: QString
+    -m_age: int
+    -m_contactInformation: ContactInformation
+    +patientId(): const QString& 
+    +fullName(): const QString& 
+    +age(): int
+    +contactInformation(): const ContactInformation&
+    +category(): PatientCategory {abstract}
+    +categoryLabel(): QString {abstract}
+    +priorityLabel(): QString {abstract}
+    +withUpdatedDetails(...): shared_ptr<const PatientRecord> {abstract}
+    +scheduleAppointment(appointment: Appointment, now: QDateTime): void
+    +cancelAppointment(appointment: Appointment): void
+  }
+
+  class GeneralPatient {
+    +category(): PatientCategory
+    +categoryLabel(): QString
+    +priorityLabel(): QString
+    +withUpdatedDetails(...): shared_ptr<const PatientRecord>
+  }
+
+  class EmergencyPatient {
+    +category(): PatientCategory
+    +categoryLabel(): QString
+    +priorityLabel(): QString
+    +withUpdatedDetails(...): shared_ptr<const PatientRecord>
+  }
+
+  class FollowUpPatient {
+    -m_followUpReason: QString
+    +FollowUpPatient(..., followUpReason: QString)
+    +category(): PatientCategory
+    +categoryLabel(): QString
+    +priorityLabel(): QString
+    +followUpReason(): const QString&
+    +withUpdatedDetails(...): shared_ptr<const PatientRecord>
+  }
+
+  class Appointment {
+    -m_appointmentId: QString
+    -m_patientId: QString
+    -m_scheduledAt: QDateTime
+    -m_status: AppointmentStatus
+    -m_notes: QString
+    +schedule(...): Appointment
+    +restore(...): Appointment
+    +cancel(): void
+    +markCompleted(now: QDateTime): void
+  }
+
+  class ContactInformation <<struct>> {
+    +phoneNumber: QString
+    +email: QString
+  }
+
+  enum PatientCategory {
+    General
+    Emergency
+    FollowUp
+  }
+
+  enum AppointmentStatus {
+    Pending
+    Completed
+    Cancelled
+  }
+}
+
+package "Data" {
+  class ClinicDatabase {
+    -m_patients: vector<PatientPointer>
+    -m_appointments: vector<Appointment>
+    -m_waitingQueue: queue<QString>
+    -m_undoSnapshots: stack<Snapshot>
+    -m_recentPatients: array<CacheEntry, 10>
+    +findPatient(patientId: QString): PatientPointer
+    +addPatient(patient: PatientPointer): void
+    +replacePatient(patientId: QString, replacement: PatientPointer): void
+    +removePatientAndRelatedState(patientId: QString): void
+    +addAppointment(appointment: Appointment): void
+    +enqueuePatient(patientId: QString): void
+    +waitingQueue(): vector<QString>
+    +callNextPatient(): optional<QString>
+    +undoLastOperation(): bool
+    +nextPatientId(): QString
+    +nextAppointmentId(): QString
+  }
+
+  class "ClinicDatabase::CacheEntry" as CacheEntry <<struct>> {
+    +patientId: QString
+    +lastAccess: uint64_t
+    +occupied: bool
+  }
+}
+
+package "Controllers and Algorithms" {
+  class ClinicManager {
+    +registerPatient(patient: PatientPointer): void
+    +editPatient(patientId: QString, ...): void
+    +deletePatient(patientId: QString): void
+    +getPatient(patientId: QString): PatientPointer
+    +enqueuePatient(patientId: QString): void
+    +callNextPatient(): optional<QString>
+    +undoLastAdministrativeOperation(): bool
+  }
+
+  class AppointmentController {
+    +scheduleAppointment(...): Appointment
+    +cancelAppointment(appointmentId: QString): void
+    +completeAppointment(appointmentId: QString, now: QDateTime): void
+    +deleteAppointment(appointmentId: QString): void
+    +getAppointment(appointmentId: QString): Appointment
+    +listAppointments(): vector<Appointment>
+  }
+
+  class PatientAlgorithms {
+    +linearSearchById(records, patientId): PatientPointer
+    +binarySearchById(records, patientId): PatientPointer
+    +recursiveSearchByName(records, nameQuery): vector<PatientPointer>
+    +searchByCategory(records, category): vector<PatientPointer>
+    +sort(records, field, algorithm, ascending): SortedPatientRecords
+  }
+
+  class SortedPatientRecords {
+    -m_records: vector<PatientPointer>
+    -m_field: PatientSortField
+    -m_ascending: bool
+    +records(): const vector<PatientPointer>&
+    +field(): PatientSortField
+    +ascending(): bool
+  }
+
+  enum PatientSortField {
+    Name
+    Id
+    Age
+  }
+
+  enum SortAlgorithm {
+    Insertion
+    Selection
+  }
+
+  class ClinicReports {
+    +mostFrequentlyAttended(database): vector<AttendanceReportRow>
+    +patientsWithPendingAppointments(database): vector<PendingAppointmentsReportRow>
+    +patientCategoryDistribution(database): CategoryDistribution
+    +dailyAppointmentSummary(database, date): DailyAppointmentSummary
+  }
+
+  class AttendanceReportRow <<struct>> {
+    +patient: PatientPointer
+    +completedAppointments: size_t
+  }
+
+  class PendingAppointmentsReportRow <<struct>> {
+    +patient: PatientPointer
+    +pendingAppointments: size_t
+  }
+
+  class CategoryDistribution <<struct>> {
+    +counts: array<size_t, 3>
+    +count(category: PatientCategory): size_t
+    +total(): size_t
+  }
+
+  class DailyAppointmentSummary <<struct>> {
+    +date: QDate
+    +total: size_t
+    +pending: size_t
+    +completed: size_t
+    +cancelled: size_t
+  }
+}
+
+package "Persistence" {
+  class FileHandler {
+    {static} +currentSchemaVersion: int
+    {static} +save(database: ClinicDatabase, filePath: QString): PersistenceResult
+    {static} +load(database: ClinicDatabase, filePath: QString): PersistenceResult
+  }
+
+  class PersistenceResult <<struct>> {
+    +success: bool
+    +message: QString
+  }
+}
+
+package "GUI" {
+  class MainWindow {
+    +MainWindow(parent: QWidget*)
+    +registerPatient(...): bool
+    +editPatient(...): bool
+    +deletePatient(patientId: QString): bool
+    +scheduleAppointment(...): bool
+    +cancelAppointment(appointmentId: QString): bool
+    +completeAppointment(appointmentId: QString, now: QDateTime): bool
+    +enqueuePatient(patientId: QString): bool
+    +callNextPatient(): optional<QString>
+    +undoLastOperation(): bool
+    +saveToFile(path: QString): PersistenceResult
+    +loadFromFile(path: QString): PersistenceResult
+    +database(): const ClinicDatabase&
+  }
+}
+
+' Inheritance and interface realization
+Appointable <|.. PatientRecord
+PatientRecord <|-- GeneralPatient
+PatientRecord <|-- EmergencyPatient
+PatientRecord <|-- FollowUpPatient
+
+' Value ownership, stored records, and patient-ID association
+PatientRecord *-- ContactInformation : value member
+ClinicDatabase o-- "0..*" PatientRecord : shared immutable records
+ClinicDatabase *-- "0..*" Appointment : stored by value
+ClinicDatabase *-- "0..10" CacheEntry : fixed-size cache
+Appointment "0..*" --> "1" PatientRecord : patientId reference
+
+' Controller/service references and algorithm/report/persistence dependencies
+ClinicManager --> ClinicDatabase : reference
+AppointmentController --> ClinicDatabase : reference
+PatientAlgorithms ..> ClinicDatabase : PatientPointer alias
+PatientAlgorithms ..> SortedPatientRecords
+SortedPatientRecords ..> PatientRecord : PatientPointer values
+ClinicReports ..> ClinicDatabase
+ClinicReports ..> AttendanceReportRow
+ClinicReports ..> PendingAppointmentsReportRow
+ClinicReports ..> CategoryDistribution
+ClinicReports ..> DailyAppointmentSummary
+FileHandler ..> ClinicDatabase
+FileHandler ..> PersistenceResult
+MainWindow --> ClinicDatabase : owns
+MainWindow --> ClinicManager : owns
+MainWindow --> AppointmentController : owns
+MainWindow ..> PatientAlgorithms
+MainWindow ..> ClinicReports
+MainWindow ..> FileHandler
+
+PatientRecord ..> PatientCategory
+Appointment ..> AppointmentStatus
+PatientAlgorithms ..> PatientSortField
+PatientAlgorithms ..> SortAlgorithm
+
+@enduml
